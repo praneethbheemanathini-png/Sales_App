@@ -22,5 +22,5 @@ const FIREBASE_CONFIG = {
 // SETUP-GUIDE.md.
 // ============================================================
 const ADMIN_EMAILS = [
-  "youradmin@fieldorder.app"
+  "ravi@fieldorder.app"
 ];
