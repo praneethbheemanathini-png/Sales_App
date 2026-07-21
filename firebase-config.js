@@ -1,12 +1,12 @@
 // ============================================================
-// PASTE YOUR FIREBASE CONFIG BELOW (from a NEW Firebase project —
-// do not reuse the one from your shop counter app, see SETUP-GUIDE.md)
+// This file connects your app to your Firebase project
+// (fieldorder-app)
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAxYpmn-_F3esHSOLOLNdG0NoZX7eFHWOk",
+  authDomain: "fieldorder-app.firebaseapp.com",
+  projectId: "fieldorder-app",
+  storageBucket: "fieldorder-app.firebasestorage.app",
+  messagingSenderId: "653226102184",
+  appId: "1:653226102184:web:25deddd7e839c32b09219d"
 };
