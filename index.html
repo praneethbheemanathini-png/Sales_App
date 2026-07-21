@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>FieldOrder — Sales App</title>
+<meta name="theme-color" content="#1F3A5F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#17212B;
+    --paper:#FFFFFF;
+    --paper-dim:#F2F4F7;
+    --line:#E2E6EB;
+    --brand:#1F3A5F;
+    --brand-dark:#16293F;
+    --accent:#C9962C;
+    --accent-dark:#AD7F22;
+    --danger:#B23A2E;
+    --success:#2E7D53;
+    --muted:#6B7686;
+    --display:'Sora', sans-serif;
+    --body:'Inter', sans-serif;
+    --mono:'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--paper-dim); font-family:var(--body); color:var(--ink); overscroll-behavior:none;}
+  #app{max-width:520px; margin:0 auto; min-height:100vh; background:var(--paper-dim); display:flex; flex-direction:column; position:relative;}
+
+  /* ---- Login ---- */
+  #loginScreen{display:flex; flex-direction:column; justify-content:center; min-height:100vh; padding:32px 26px; background:linear-gradient(160deg,var(--brand) 0%,var(--brand-dark) 100%);}
+  #loginScreen.hidden{display:none;}
+  .login-brand{color:#fff; margin-bottom:34px;}
+  .login-brand .lb-mark{width:52px; height:52px; border-radius:14px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:16px;}
+  .login-brand h1{font-family:var(--display); font-weight:700; font-size:26px; margin:0 0 6px;}
+  .login-brand p{font-size:13.5px; opacity:0.75; margin:0;}
+  .login-card{background:var(--paper); border-radius:16px; padding:22px;}
+  .login-card label{font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin:12px 0 5px;}
+  .login-card label:first-child{margin-top:0;}
+  #loginError{color:var(--danger); font-size:13px; margin-top:10px; display:none;}
+
+  /* ---- Top bar ---- */
+  .topbar{background:var(--brand); color:#fff; padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:20;}
+  .topbar h1{font-family:var(--display); font-weight:600; font-size:19px; letter-spacing:0.2px; margin:0;}
+  .user-pill{font-family:var(--body); font-size:12px; background:rgba(255,255,255,0.15); padding:6px 10px; border-radius:20px; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; gap:6px;}
+
+  /* ---- Screens ---- */
+  .screen{display:none; flex:1; padding:14px 14px 90px; overflow-y:auto;}
+  .screen.active{display:block;}
+  #mainApp{display:none;}
+  #mainApp.show{display:block;}
+
+  .section-label{font-family:var(--display); font-size:13px; letter-spacing:1.1px; text-transform:uppercase; color:var(--muted); margin:18px 0 10px; display:flex; align-items:center; gap:8px;}
+  .section-label:first-child{margin-top:0;}
+  .section-label::after{content:''; flex:1; height:1px; background:var(--line);}
+
+  /* ---- Catalog grid ---- */
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .ptile{background:var(--paper); border:1px solid var(--line); border-radius:14px; overflow:hidden; cursor:pointer; display:flex; flex-direction:column; transition:transform .08s ease;}
+  .ptile:active{transform:scale(0.97);}
+  .ptile .pimg{width:100%; aspect-ratio:1.3; background:var(--paper-dim); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;}
+  .ptile .pimg img{width:100%; height:100%; object-fit:cover;}
+  .ptile .pimg .noimg{font-size:30px; opacity:0.25;}
+  .hot-badge{position:absolute; top:6px; left:6px; background:var(--accent); color:#fff; font-size:10px; font-weight:700; padding:3px 7px; border-radius:20px; letter-spacing:0.3px;}
+  .ptile .pbody{padding:10px 11px 12px;}
+  .ptile .pname{font-weight:600; font-size:13.5px; line-height:1.25; margin-bottom:4px;}
+  .ptile .pmrp{font-size:11px; color:var(--muted); text-decoration:line-through; margin-right:5px;}
+  .ptile .pprice{font-family:var(--mono); font-size:14px; color:var(--brand); font-weight:600;}
+  .color-dots{display:flex; gap:4px; margin-top:6px;}
+  .color-dots span{width:10px; height:10px; border-radius:50%; border:1px solid var(--line); display:inline-block;}
+  .qty-badge{position:absolute; top:6px; right:6px; background:var(--ink); color:#fff; font-family:var(--mono); font-weight:700; font-size:11px; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 5px;}
+
+  /* ---- Retailer list ---- */
+  .rl-row{background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:13px 14px; margin-bottom:8px; cursor:pointer;}
+  .rl-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .rl-name{font-weight:600; font-size:14.5px;}
+  .rl-area{font-size:12px; color:var(--muted); margin-top:2px;}
+  .rl-due{font-family:var(--mono); font-weight:600; font-size:13.5px;}
+  .rl-due.pos{color:var(--danger);}
+  .rl-due.zero{color:var(--success);}
+  .rl-duelabel{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; text-align:right;}
+
+  .icon-btn{width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:var(--paper-dim); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; color:var(--muted); flex-shrink:0;}
+
+  .fab{position:fixed; right:calc(50% - 260px + 18px); bottom:74px; width:54px; height:54px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:26px; font-weight:700; box-shadow:0 4px 12px rgba(0,0,0,0.25); cursor:pointer; z-index:16;}
+  @media (max-width:520px){ .fab{right:18px;} }
+
+  /* ---- Cards / receipts (orders, collections) ---- */
+  .ticket{background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px;}
+  .ticket-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .ticket-head .t-retailer{font-weight:600; font-size:14.5px;}
+  .ticket-head .t-time{font-size:11px; color:var(--muted);}
+  .ticket-items{font-size:13px; margin-bottom:8px;}
+  .ticket-items div{display:flex; justify-content:space-between; padding:2px 0;}
+  .ticket-items .ti-amt{font-family:var(--mono); color:var(--muted);}
+  .ticket-bonus{font-size:12px; color:var(--accent-dark); font-weight:600; margin-bottom:6px;}
+  .ticket-foot{display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--line); padding-top:8px;}
+  .ticket-foot .tf-total{font-family:var(--mono); font-weight:700; font-size:16px;}
+
+  .empty-state{text-align:center; padding:60px 20px; color:var(--muted);}
+  .empty-state .es-icon{font-size:38px; margin-bottom:10px;}
+  .empty-state .es-title{font-family:var(--display); font-size:16px; color:var(--ink); margin-bottom:4px;}
+  .empty-state .es-sub{font-size:13px;}
+
+  /* ---- Summary stats ---- */
+  .stat-big{background:var(--brand); color:#fff; border-radius:16px; padding:20px; margin-bottom:12px;}
+  .stat-big .sb-label{font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.8;}
+  .stat-big .sb-value{font-family:var(--mono); font-size:30px; font-weight:600; margin-top:4px;}
+  .stat-row{display:flex; gap:10px; margin-bottom:12px;}
+  .stat-card{flex:1; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:14px;}
+  .stat-card .sc-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;}
+  .stat-card .sc-value{font-family:var(--mono); font-size:19px; font-weight:600; margin-top:4px;}
+
+  /* ---- Scheme cards ---- */
+  .scheme-card{background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:10px; padding:12px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;}
+  .scheme-card .sc-text{font-size:13.5px;}
+  .scheme-card .sc-text b{color:var(--brand);}
+  .scheme-card .sc-inactive{opacity:0.45;}
+
+  /* ---- Sheets / modals (shared) ---- */
+  .sheet-overlay, .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:30; display:none;}
+  .sheet-overlay.show, .modal-overlay.show{display:block;}
+  .sheet{position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto; background:var(--paper); border-radius:18px 18px 0 0; z-index:31; max-height:88vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform .22s ease; padding-bottom:env(safe-area-inset-bottom,0px);}
+  .sheet.show{transform:translateY(0);}
+  .sheet-handle{width:36px; height:4px; background:var(--line); border-radius:2px; margin:10px auto 4px;}
+  .sheet-header{padding:6px 18px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line);}
+  .sheet-header h2{font-family:var(--display); font-size:17px; margin:0;}
+  .sheet-body{overflow-y:auto; padding:12px 18px; flex:1;}
+  .sheet-footer{padding:14px 18px calc(14px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line); background:var(--paper);}
+
+  .modal-overlay{display:none; align-items:flex-end; justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--paper); width:100%; max-width:520px; max-height:88vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));}
+  .modal h3{font-family:var(--display); margin:0 0 14px;}
+  .modal label{font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin:12px 0 5px;}
+  .modal label:first-of-type{margin-top:0;}
+
+  input[type=text], input[type=email], input[type=password], input[type=number], select, textarea{width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; font-family:var(--body); font-size:14px; background:var(--paper-dim); color:var(--ink);}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; margin-top:12px;}
+  .toggle-row label{margin:0;}
+  .switch{position:relative; width:42px; height:24px;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{position:absolute; inset:0; background:var(--line); border-radius:24px; cursor:pointer; transition:.2s;}
+  .slider::before{content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+  input:checked + .slider{background:var(--success);}
+  input:checked + .slider::before{transform:translateX(18px);}
+
+  .btn-primary{width:100%; padding:15px; border:none; border-radius:12px; background:var(--brand); color:#fff; font-family:var(--display); font-size:15.5px; font-weight:600; letter-spacing:0.3px; cursor:pointer;}
+  .btn-primary:active{background:var(--brand-dark);}
+  .btn-primary:disabled{background:#B9C0C9; cursor:not-allowed;}
+  .btn-accent{background:var(--accent);}
+  .btn-accent:active{background:var(--accent-dark);}
+  .btn-ghost{width:100%; padding:12px; border:1.5px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); font-family:var(--body); font-weight:600; font-size:14px; cursor:pointer; margin-top:8px;}
+  .btn-danger-ghost{color:var(--danger); border-color:var(--danger);}
+
+  /* ---- Cart (order picker) ---- */
+  .cart-bar{position:fixed; left:0; right:0; bottom:56px; max-width:520px; margin:0 auto; background:var(--ink); color:#fff; padding:12px 16px; display:none; align-items:center; justify-content:space-between; cursor:pointer; z-index:15; box-shadow:0 -2px 12px rgba(0,0,0,0.15);}
+  .cart-bar.show{display:flex;}
+  .cart-bar .cb-left{font-size:13px; color:#c8ccd2;}
+  .cart-bar .cb-total{font-family:var(--mono); font-weight:600; font-size:17px; color:var(--accent);}
+  .cart-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);}
+  .cart-row .cr-name{font-weight:600; font-size:14px;}
+  .cart-row .cr-price{font-family:var(--mono); font-size:12px; color:var(--muted);}
+  .cart-row .cr-bonus{font-size:11.5px; color:var(--accent-dark); font-weight:600; margin-top:2px;}
+  .stepper{display:flex; align-items:center; gap:10px;}
+  .stepper button{width:28px; height:28px; border-radius:8px; border:1px solid var(--line); background:var(--paper-dim); font-size:16px; font-weight:700; color:var(--ink); cursor:pointer;}
+  .stepper span{font-family:var(--mono); font-weight:600; min-width:18px; text-align:center;}
+  .cart-empty{text-align:center; color:var(--muted); padding:40px 0; font-size:14px;}
+  .total-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;}
+  .total-row .tr-label{font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px;}
+  .total-row .tr-value{font-family:var(--mono); font-size:24px; font-weight:600;}
+
+  /* ---- Retailer detail sheet ---- */
+  .rd-header{margin-bottom:14px;}
+  .rd-header h2{font-family:var(--display); font-size:19px; margin:0 0 3px;}
+  .rd-header .rd-sub{font-size:12.5px; color:var(--muted);}
+  .rd-stats{display:flex; gap:10px; margin:14px 0;}
+  .rd-actions{display:flex; gap:10px; margin-bottom:16px;}
+  .rd-actions button{flex:1;}
+
+  /* ---- Bottom nav ---- */
+  .navbar{position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto; background:var(--paper); border-top:1px solid var(--line); display:flex; z-index:25; padding-bottom:env(safe-area-inset-bottom,0px);}
+  .navbtn{flex:1; border:none; background:none; padding:10px 2px 8px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; color:var(--muted); font-family:var(--body); font-size:10.5px; font-weight:600;}
+  .navbtn .ni{font-size:18px;}
+  .navbtn.active{color:var(--brand);}
+
+  .toast{position:fixed; top:calc(env(safe-area-inset-top,0px) + 64px); left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:20px; font-size:13px; z-index:60; opacity:0; transition:opacity .25s; pointer-events:none; max-width:85%; text-align:center;}
+  .toast.show{opacity:1;}
+  .conn-banner{background:var(--danger); color:#fff; font-size:12px; text-align:center; padding:7px; display:none;}
+  .conn-banner.show{display:block;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <div class="login-brand">
+      <div class="lb-mark">📋</div>
+      <h1>FieldOrder</h1>
+      <p>Sign in to take retailer orders</p>
+    </div>
+    <div class="login-card">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="you@company.com" autocomplete="username">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      <div id="loginError"></div>
+      <button class="btn-primary" style="margin-top:16px;" onclick="doLogin()">Sign in</button>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp">
+    <div class="conn-banner" id="connBanner">Not connected to shared database — see SETUP-GUIDE.md</div>
+    <div class="topbar">
+      <h1 id="screenTitle">Retailers</h1>
+      <button class="user-pill" onclick="doLogout()"><span id="userEmailLabel"></span> ⎋</button>
+    </div>
+
+    <div class="screen active" id="screen-retailers">
+      <div id="retailersWrap"></div>
+    </div>
+
+    <div class="screen" id="screen-catalog">
+      <div id="catalogWrap"></div>
+    </div>
+
+    <div class="screen" id="screen-orders">
+      <div class="section-label">Orders placed</div>
+      <div id="ordersWrap"></div>
+    </div>
+
+    <div class="screen" id="screen-collections">
+      <div id="collectionsWrap"></div>
+    </div>
+
+    <div class="screen" id="screen-schemes">
+      <div class="section-label">Bonus schemes</div>
+      <div id="schemesWrap"></div>
+    </div>
+
+    <button class="fab" id="mainFab" style="display:none;" onclick="mainFabAction()">+</button>
+
+    <div class="navbar">
+      <button class="navbtn active" data-screen="retailers" onclick="switchScreen('retailers')"><span class="ni">🏬</span>Retailers</button>
+      <button class="navbtn" data-screen="catalog" onclick="switchScreen('catalog')"><span class="ni">📦</span>Catalog</button>
+      <button class="navbtn" data-screen="orders" onclick="switchScreen('orders')"><span class="ni">🧾</span>Orders</button>
+      <button class="navbtn" data-screen="collections" onclick="switchScreen('collections')"><span class="ni">💰</span>Collections</button>
+      <button class="navbtn" data-screen="schemes" onclick="switchScreen('schemes')"><span class="ni">🎁</span>Schemes</button>
+    </div>
+  </div>
+
+  <!-- RETAILER DETAIL SHEET -->
+  <div class="sheet-overlay" id="retailerOverlay" onclick="closeRetailerSheet()"></div>
+  <div class="sheet" id="retailerSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h2>Retailer</h2><button class="icon-btn" onclick="closeRetailerSheet()">✕</button></div>
+    <div class="sheet-body" id="retailerDetailBody"></div>
+  </div>
+
+  <!-- ORDER PICKER SHEET (product picker + cart) -->
+  <div class="sheet-overlay" id="orderOverlay" onclick="closeOrderSheet()"></div>
+  <div class="sheet" id="orderSheet" style="max-height:92vh;">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h2 id="orderSheetTitle">New order</h2><button class="icon-btn" onclick="closeOrderSheet()">✕</button></div>
+    <div class="sheet-body" id="orderPickerBody"></div>
+    <div class="sheet-footer">
+      <div class="total-row"><span class="tr-label">Order total</span><span class="tr-value" id="orderSheetTotal">₹0</span></div>
+      <button class="btn-primary btn-accent" id="submitOrderBtn" onclick="submitOrder()">Place order</button>
+    </div>
+  </div>
+
+  <div class="cart-bar" id="cartBar" onclick="openCartFromBar()">
+    <div class="cb-left" id="cartBarLeft">0 items</div>
+    <div class="cb-total" id="cartBarTotal">₹0</div>
+  </div>
+
+  <!-- COLLECTION MODAL -->
+  <div class="modal-overlay" id="collectionModalOverlay" onclick="if(event.target===this)closeCollectionModal()">
+    <div class="modal">
+      <h3>Record collection</h3>
+      <div id="collectionRetailerLabel" style="font-size:13px; color:var(--muted); margin-bottom:8px;"></div>
+      <label>Amount received (₹)</label>
+      <input type="number" id="colAmount" inputmode="decimal" placeholder="e.g. 5000">
+      <label>Method</label>
+      <select id="colMethod">
+        <option>Cash</option><option>Cheque</option><option>UPI</option><option>Bank Transfer</option>
+      </select>
+      <label>Note (optional)</label>
+      <input type="text" id="colNote" placeholder="e.g. Partial payment">
+      <button class="btn-primary" style="margin-top:16px;" onclick="saveCollection()">Save collection</button>
+      <button class="btn-ghost" onclick="closeCollectionModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- RETAILER ADD/EDIT MODAL -->
+  <div class="modal-overlay" id="retailerModalOverlay" onclick="if(event.target===this)closeRetailerModal()">
+    <div class="modal">
+      <h3 id="retailerModalTitle">Add retailer</h3>
+      <label>Shop / retailer name</label>
+      <input type="text" id="rmName" placeholder="e.g. Sri Lakshmi General Store">
+      <label>Contact phone</label>
+      <input type="text" id="rmPhone" inputmode="tel" placeholder="e.g. 98765 43210">
+      <label>Area / address</label>
+      <input type="text" id="rmArea" placeholder="e.g. Jayanagar, Bengaluru">
+      <button class="btn-primary" style="margin-top:16px;" onclick="saveRetailer()">Save retailer</button>
+      <button class="btn-ghost" onclick="closeRetailerModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- PRODUCT ADD/EDIT MODAL -->
+  <div class="modal-overlay" id="productModalOverlay" onclick="if(event.target===this)closeProductModal()">
+    <div class="modal">
+      <h3 id="productModalTitle">Add product</h3>
+      <label>Product name</label>
+      <input type="text" id="pmName" placeholder="e.g. Aeromic 500">
+      <label>MRP (₹)</label>
+      <input type="number" id="pmMrp" inputmode="decimal" placeholder="e.g. 4999">
+      <label>Selling price (₹)</label>
+      <input type="number" id="pmPrice" inputmode="decimal" placeholder="e.g. 1030">
+      <label>Image URL (optional)</label>
+      <input type="text" id="pmImage" placeholder="https://...">
+      <label>Colors (optional, comma separated)</label>
+      <input type="text" id="pmColors" placeholder="e.g. black, beige, blue">
+      <div class="toggle-row">
+        <label style="margin:0;">Mark as hot selling</label>
+        <label class="switch"><input type="checkbox" id="pmHot"><span class="slider"></span></label>
+      </div>
+      <button class="btn-primary" style="margin-top:16px;" onclick="saveProduct()">Save product</button>
+      <button class="btn-ghost" onclick="closeProductModal()">Cancel</button>
+      <button class="btn-ghost btn-danger-ghost" id="pmDeleteBtn" style="display:none;" onclick="deleteProductConfirm()">Delete product</button>
+    </div>
+  </div>
+
+  <!-- SCHEME ADD MODAL -->
+  <div class="modal-overlay" id="schemeModalOverlay" onclick="if(event.target===this)closeSchemeModal()">
+    <div class="modal">
+      <h3>Add bonus scheme</h3>
+      <label>Product</label>
+      <select id="smProduct"></select>
+      <label>Buy quantity</label>
+      <input type="number" id="smBuyQty" placeholder="e.g. 10">
+      <label>Free item name</label>
+      <input type="text" id="smFreeName" placeholder="e.g. Aeromic 500">
+      <label>Free quantity</label>
+      <input type="number" id="smGetQty" placeholder="e.g. 1">
+      <button class="btn-primary" style="margin-top:16px;" onclick="saveScheme()">Save scheme</button>
+      <button class="btn-ghost" onclick="closeSchemeModal()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+/* ============================================================
+   FieldOrder — field sales order-taking app
+   Retailers/Orders/Collections are private per salesman (uid).
+   Products/Schemes are shared across the whole team.
+   See SETUP-GUIDE.md to connect your own free Firebase project.
+   ============================================================ */
+const CURRENCY = "₹";
+let db=null, auth=null, firestoreReady=false, currentUser=null, isAdmin=false;
+let products=[], schemes=[], retailers=[], orders=[], collections=[];
+let activeRetailerId=null;
+let orderCart={}; // productId -> {product, qty}
+let editingProductId=null, editingRetailerId=null;
+
+function fmt(n){ return CURRENCY + (Math.round((n||0)*100)/100).toLocaleString('en-IN'); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1900); }
+
+// ---------- Firebase init ----------
+function initFirebase(){
+  try{
+    if (typeof FIREBASE_CONFIG === 'undefined' || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.includes('YOUR_')) {
+      document.getElementById('connBanner').classList.add('show');
+      document.getElementById('loginError').textContent = 'App is not connected to Firebase yet — see SETUP-GUIDE.md';
+      document.getElementById('loginError').style.display='block';
+      return;
+    }
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    firestoreReady = true;
+    auth.onAuthStateChanged(user=>{
+      if(user){ currentUser=user; onLoggedIn(); }
+      else { currentUser=null; onLoggedOut(); }
+    });
+  }catch(e){ console.error(e); document.getElementById('connBanner').classList.add('show'); }
+}
+
+function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display='none';
+  if(!firestoreReady){ errEl.textContent='Not connected — see SETUP-GUIDE.md'; errEl.style.display='block'; return; }
+  if(!email || !pass){ errEl.textContent='Enter email and password'; errEl.style.display='block'; return; }
+  auth.signInWithEmailAndPassword(email, pass).catch(e=>{
+    errEl.textContent = 'Could not sign in — check email/password with your admin.';
+    errEl.style.display='block';
+  });
+}
+function doLogout(){ auth.signOut(); }
+
+function onLoggedIn(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.add('show');
+  const adminList = (typeof ADMIN_EMAILS !== 'undefined' && Array.isArray(ADMIN_EMAILS)) ? ADMIN_EMAILS : [];
+  isAdmin = adminList.map(e=>e.toLowerCase()).includes((currentUser.email||'').toLowerCase());
+  document.getElementById('userEmailLabel').textContent = currentUser.email.split('@')[0] + (isAdmin?' · admin':'');
+  listenProducts(); listenSchemes(); listenRetailers(); listenOrders(); listenCollections();
+  switchScreen('retailers');
+}
+function onLoggedOut(){
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('mainApp').classList.remove('show');
+  products=[];schemes=[];retailers=[];orders=[];collections=[];
+}
+
+// ---------- Firestore listeners ----------
+function listenProducts(){
+  db.collection('products').orderBy('name').onSnapshot(snap=>{
+    products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderCatalog(); populateSchemeProductSelect();
+  }, e=>console.error(e));
+}
+function listenSchemes(){
+  db.collection('schemes').onSnapshot(snap=>{
+    schemes = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderSchemes();
+  }, e=>console.error(e));
+}
+function listenRetailers(){
+  db.collection('retailers').where('salesmanUid','==',currentUser.uid).orderBy('name').onSnapshot(snap=>{
+    retailers = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderRetailers();
+  }, e=>console.error(e));
+}
+function listenOrders(){
+  db.collection('orders').where('salesmanUid','==',currentUser.uid).orderBy('createdAtLocal','desc').limit(200).onSnapshot(snap=>{
+    orders = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderOrders(); renderCollections();
+  }, e=>console.error(e));
+}
+function listenCollections(){
+  db.collection('collections').where('salesmanUid','==',currentUser.uid).orderBy('createdAtLocal','desc').limit(200).onSnapshot(snap=>{
+    collections = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderCollections();
+  }, e=>console.error(e));
+}
+
+// ---------- Nav ----------
+const TITLES = {retailers:'Retailers', catalog:'Catalog', orders:'Orders', collections:'Collections', schemes:'Schemes'};
+function switchScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+  document.getElementById('screenTitle').textContent = TITLES[name];
+  const fab = document.getElementById('mainFab');
+  if(name==='catalog' && isAdmin){ fab.style.display='flex'; fab.textContent='+'; fab.onclick=()=>openProductModal(); }
+  else if(name==='retailers'){ fab.style.display='flex'; fab.textContent='+'; fab.onclick=()=>openRetailerModal(); }
+  else if(name==='schemes' && isAdmin){ fab.style.display='flex'; fab.textContent='+'; fab.onclick=()=>openSchemeModal(); }
+  else { fab.style.display='none'; }
+  document.getElementById('cartBar').classList.remove('show');
+}
+function mainFabAction(){}
+
+// ================= RETAILERS =================
+function outstandingFor(retailerId){
+  const totalOrders = orders.filter(o=>o.retailerId===retailerId).reduce((s,o)=>s+o.total,0);
+  const totalCollected = collections.filter(c=>c.retailerId===retailerId).reduce((s,c)=>s+c.amount,0);
+  return totalOrders - totalCollected;
+}
+function renderRetailers(){
+  const wrap = document.getElementById('retailersWrap');
+  if(retailers.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="es-icon">🏬</div><div class="es-title">No retailers yet</div><div class="es-sub">Tap + to add the first retailer you visit.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = retailers.map(r=>{
+    const due = outstandingFor(r.id);
+    const dueClass = due>0 ? 'pos' : 'zero';
+    return `<div class="rl-row" onclick="openRetailerSheet('${r.id}')">
+      <div class="rl-top">
+        <div>
+          <div class="rl-name">${escapeHtml(r.name)}</div>
+          <div class="rl-area">${escapeHtml(r.area||r.phone||'')}</div>
+        </div>
+        <div>
+          <div class="rl-due ${dueClass}">${fmt(due)}</div>
+          <div class="rl-duelabel">Outstanding</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openRetailerModal(pid){
+  editingRetailerId = pid || null;
+  if(pid){
+    const r = retailers.find(x=>x.id===pid);
+    document.getElementById('retailerModalTitle').textContent='Edit retailer';
+    document.getElementById('rmName').value=r.name;
+    document.getElementById('rmPhone').value=r.phone||'';
+    document.getElementById('rmArea').value=r.area||'';
+  } else {
+    document.getElementById('retailerModalTitle').textContent='Add retailer';
+    document.getElementById('rmName').value=''; document.getElementById('rmPhone').value=''; document.getElementById('rmArea').value='';
+  }
+  document.getElementById('retailerModalOverlay').classList.add('show');
+}
+function closeRetailerModal(){ document.getElementById('retailerModalOverlay').classList.remove('show'); editingRetailerId=null; }
+async function saveRetailer(){
+  const name=document.getElementById('rmName').value.trim();
+  const phone=document.getElementById('rmPhone').value.trim();
+  const area=document.getElementById('rmArea').value.trim();
+  if(!name){ showToast('Enter a retailer name'); return; }
+  try{
+    if(editingRetailerId){
+      await db.collection('retailers').doc(editingRetailerId).update({name,phone,area});
+    } else {
+      await db.collection('retailers').add({name,phone,area,salesmanUid:currentUser.uid, createdAtLocal:Date.now()});
+    }
+    closeRetailerModal(); showToast('Retailer saved');
+  }catch(e){ console.error(e); showToast('Could not save — check connection/rules'); }
+}
+
+function openRetailerSheet(rid){
+  activeRetailerId = rid;
+  const r = retailers.find(x=>x.id===rid);
+  const due = outstandingFor(rid);
+  const rOrders = orders.filter(o=>o.retailerId===rid).slice(0,5);
+  const rCols = collections.filter(c=>c.retailerId===rid).slice(0,5);
+  const body = document.getElementById('retailerDetailBody');
+  body.innerHTML = `
+    <div class="rd-header">
+      <h2>${escapeHtml(r.name)}</h2>
+      <div class="rd-sub">${escapeHtml(r.area||'')}${r.phone?' · '+escapeHtml(r.phone):''}</div>
+    </div>
+    <div class="rd-stats">
+      <div class="stat-card"><div class="sc-label">Outstanding</div><div class="sc-value" style="color:${due>0?'var(--danger)':'var(--success)'}">${fmt(due)}</div></div>
+      <div class="stat-card"><div class="sc-label">Orders placed</div><div class="sc-value">${orders.filter(o=>o.retailerId===rid).length}</div></div>
+    </div>
+    <div class="rd-actions">
+      <button class="btn-primary btn-accent" onclick="closeRetailerSheet(); openOrderSheet('${rid}')">New order</button>
+      <button class="btn-primary" onclick="openCollectionModal('${rid}')">Record collection</button>
+    </div>
+    <button class="btn-ghost" onclick="closeRetailerSheet(); openRetailerModal('${rid}')">Edit retailer details</button>
+    <div class="section-label" style="margin-top:20px;">Recent orders</div>
+    ${rOrders.length? rOrders.map(o=>`<div class="ticket" style="margin-bottom:8px;"><div class="ticket-head"><span class="t-time">${new Date(o.createdAtLocal).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span><span class="tf-total">${fmt(o.total)}</span></div></div>`).join('') : `<div class="cart-empty">No orders yet</div>`}
+    <div class="section-label">Recent collections</div>
+    ${rCols.length? rCols.map(c=>`<div class="ticket" style="margin-bottom:8px;"><div class="ticket-head"><span class="t-time">${new Date(c.createdAtLocal).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})} · ${escapeHtml(c.method)}</span><span class="tf-total" style="color:var(--success)">${fmt(c.amount)}</span></div></div>`).join('') : `<div class="cart-empty">No collections yet</div>`}
+  `;
+  document.getElementById('retailerOverlay').classList.add('show');
+  document.getElementById('retailerSheet').classList.add('show');
+}
+function closeRetailerSheet(){
+  document.getElementById('retailerOverlay').classList.remove('show');
+  document.getElementById('retailerSheet').classList.remove('show');
+}
+
+// ================= CATALOG =================
+function renderCatalog(){
+  const wrap = document.getElementById('catalogWrap');
+  if(products.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="es-icon">📦</div><div class="es-title">No products yet</div><div class="es-sub">Tap + to add your first product.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="section-label">All products</div><div class="grid">` + products.map(p=>`
+    <div class="ptile" ${isAdmin ? `onclick="openProductModal('${p.id}')"` : ''} style="${isAdmin?'':'cursor:default;'}">
+      <div class="pimg">
+        ${p.hot ? '<div class="hot-badge">🔥 HOT</div>' : ''}
+        ${p.image ? `<img src="${escapeHtml(p.image)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+        <div class="noimg" style="${p.image?'display:none;':'display:flex;'}">📦</div>
+      </div>
+      <div class="pbody">
+        <div class="pname">${escapeHtml(p.name)}</div>
+        <div><span class="pmrp">${fmt(p.mrp)}</span><span class="pprice">${fmt(p.price)}</span></div>
+        ${p.colors && p.colors.length ? `<div class="color-dots">${p.colors.map(c=>`<span style="background:${escapeHtml(c)}"></span>`).join('')}</div>` : ''}
+      </div>
+    </div>`).join('') + `</div>`;
+}
+function openProductModal(pid){
+  editingProductId = pid || null;
+  if(pid){
+    const p = products.find(x=>x.id===pid);
+    document.getElementById('productModalTitle').textContent='Edit product';
+    document.getElementById('pmName').value=p.name;
+    document.getElementById('pmMrp').value=p.mrp;
+    document.getElementById('pmPrice').value=p.price;
+    document.getElementById('pmImage').value=p.image||'';
+    document.getElementById('pmColors').value=(p.colors||[]).join(', ');
+    document.getElementById('pmHot').checked=!!p.hot;
+    document.getElementById('pmDeleteBtn').style.display='block';
+  } else {
+    document.getElementById('productModalTitle').textContent='Add product';
+    document.getElementById('pmName').value=''; document.getElementById('pmMrp').value=''; document.getElementById('pmPrice').value='';
+    document.getElementById('pmImage').value=''; document.getElementById('pmColors').value=''; document.getElementById('pmHot').checked=false;
+    document.getElementById('pmDeleteBtn').style.display='none';
+  }
+  document.getElementById('productModalOverlay').classList.add('show');
+}
+function closeProductModal(){ document.getElementById('productModalOverlay').classList.remove('show'); editingProductId=null; }
+async function saveProduct(){
+  const name=document.getElementById('pmName').value.trim();
+  const mrp=parseFloat(document.getElementById('pmMrp').value);
+  const price=parseFloat(document.getElementById('pmPrice').value);
+  const image=document.getElementById('pmImage').value.trim();
+  const colors=document.getElementById('pmColors').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const hot=document.getElementById('pmHot').checked;
+  if(!name || isNaN(price) || price<0){ showToast('Enter a valid name and price'); return; }
+  const data = {name, mrp: isNaN(mrp)?price:mrp, price, image: image||null, colors, hot};
+  try{
+    if(editingProductId){ await db.collection('products').doc(editingProductId).update(data); }
+    else { await db.collection('products').add(data); }
+    closeProductModal(); showToast('Product saved');
+  }catch(e){ console.error(e); showToast('Could not save product'); }
+}
+async function deleteProductConfirm(){
+  if(!editingProductId) return;
+  if(!confirm('Delete this product?')) return;
+  try{ await db.collection('products').doc(editingProductId).delete(); closeProductModal(); showToast('Product deleted'); }
+  catch(e){ console.error(e); showToast('Could not delete'); }
+}
+
+// ================= ORDER PICKER (cart + schemes) =================
+function activeSchemeFor(productId){ return schemes.find(s=>s.productId===productId && s.active!==false); }
+function cartCount(){ return Object.values(orderCart).reduce((s,c)=>s+c.qty,0); }
+function cartTotal(){ return Object.values(orderCart).reduce((s,c)=>s+c.qty*c.product.price,0); }
+
+function openOrderSheet(rid){
+  activeRetailerId = rid;
+  orderCart = {};
+  const r = retailers.find(x=>x.id===rid);
+  document.getElementById('orderSheetTitle').textContent = 'New order — ' + r.name;
+  renderOrderPicker();
+  document.getElementById('orderOverlay').classList.add('show');
+  document.getElementById('orderSheet').classList.add('show');
+}
+function closeOrderSheet(){
+  document.getElementById('orderOverlay').classList.remove('show');
+  document.getElementById('orderSheet').classList.remove('show');
+}
+function openCartFromBar(){
+  document.getElementById('orderOverlay').classList.add('show');
+  document.getElementById('orderSheet').classList.add('show');
+}
+function renderOrderPicker(){
+  const body = document.getElementById('orderPickerBody');
+  if(products.length===0){
+    body.innerHTML = `<div class="cart-empty">No products in catalog yet. Add some in the Catalog tab first.</div>`;
+  } else {
+    body.innerHTML = `<div class="grid">` + products.map(p=>{
+      const qty = orderCart[p.id] ? orderCart[p.id].qty : 0;
+      return `<button class="ptile" style="text-align:left; border:1px solid var(--line); cursor:pointer;" onclick="addToOrderCart('${p.id}')">
+        <div class="pimg">
+          ${qty>0 ? `<div class="qty-badge">${qty}</div>`:''}
+          ${p.image ? `<img src="${escapeHtml(p.image)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+          <div class="noimg" style="${p.image?'display:none;':'display:flex;'}">📦</div>
+        </div>
+        <div class="pbody">
+          <div class="pname">${escapeHtml(p.name)}</div>
+          <div class="pprice">${fmt(p.price)}</div>
+        </div>
+      </button>`;
+    }).join('') + `</div>`;
+    if(cartCount()>0){
+      body.innerHTML += `<div class="section-label">In this order</div>` + Object.entries(orderCart).map(([pid,c])=>{
+        const scheme = activeSchemeFor(pid);
+        let bonusHtml='';
+        if(scheme && c.qty >= scheme.buyQty){
+          const times = Math.floor(c.qty/scheme.buyQty);
+          bonusHtml = `<div class="cr-bonus">🎁 +${times*scheme.getQty} ${escapeHtml(scheme.freeName)} free</div>`;
+        }
+        return `<div class="cart-row">
+          <div>
+            <div class="cr-name">${escapeHtml(c.product.name)}</div>
+            <div class="cr-price">${fmt(c.product.price)} each</div>
+            ${bonusHtml}
+          </div>
+          <div class="stepper">
+            <button onclick="changeOrderQty('${pid}',-1)">−</button>
+            <span>${c.qty}</span>
+            <button onclick="changeOrderQty('${pid}',1)">+</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+  document.getElementById('orderSheetTotal').textContent = fmt(cartTotal());
+  document.getElementById('submitOrderBtn').disabled = cartCount()===0;
+  updateCartBar();
+}
+function addToOrderCart(pid){
+  const p = products.find(x=>x.id===pid); if(!p) return;
+  if(!orderCart[pid]) orderCart[pid]={product:p, qty:0};
+  orderCart[pid].qty += 1;
+  renderOrderPicker();
+}
+function changeOrderQty(pid, delta){
+  if(!orderCart[pid]) return;
+  orderCart[pid].qty += delta;
+  if(orderCart[pid].qty<=0) delete orderCart[pid];
+  renderOrderPicker();
+}
+function updateCartBar(){
+  const bar = document.getElementById('cartBar');
+  const sheetOpen = document.getElementById('orderSheet').classList.contains('show');
+  if(cartCount()>0 && !sheetOpen){
+    bar.classList.add('show');
+    document.getElementById('cartBarLeft').textContent = cartCount()+(cartCount()===1?' item':' items');
+    document.getElementById('cartBarTotal').textContent = fmt(cartTotal());
+  } else { bar.classList.remove('show'); }
+}
+
+async function submitOrder(){
+  if(cartCount()===0 || !activeRetailerId) return;
+  const btn = document.getElementById('submitOrderBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+  const items = Object.values(orderCart).map(c=>({productId:c.product.id, name:c.product.name, price:c.product.price, qty:c.qty}));
+  const bonuses = [];
+  Object.entries(orderCart).forEach(([pid,c])=>{
+    const scheme = activeSchemeFor(pid);
+    if(scheme && c.qty >= scheme.buyQty){
+      const times = Math.floor(c.qty/scheme.buyQty);
+      bonuses.push({name:scheme.freeName, qty: times*scheme.getQty});
+    }
+  });
+  const total = cartTotal();
+  try{
+    await db.collection('orders').add({
+      retailerId: activeRetailerId, salesmanUid: currentUser.uid,
+      items, bonuses, total,
+      createdAtLocal: Date.now()
+    });
+    orderCart={};
+    closeOrderSheet();
+    showToast('Order placed ✓');
+  }catch(e){ console.error(e); showToast('Could not save order'); }
+  finally{ btn.disabled=false; btn.textContent='Place order'; }
+}
+
+// ================= ORDERS SUMMARY =================
+function renderOrders(){
+  const wrap = document.getElementById('ordersWrap');
+  if(orders.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="es-icon">🧾</div><div class="es-title">No orders yet</div><div class="es-sub">Orders you place will show up here.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = orders.map(o=>{
+    const r = retailers.find(x=>x.id===o.retailerId);
+    const time = new Date(o.createdAtLocal).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) + ' · ' + new Date(o.createdAtLocal).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const itemsHtml = (o.items||[]).map(it=>`<div><span>${it.qty}× ${escapeHtml(it.name)}</span><span class="ti-amt">${fmt(it.qty*it.price)}</span></div>`).join('');
+    const bonusHtml = (o.bonuses||[]).filter(b=>b.qty>0).map(b=>`🎁 +${b.qty} ${escapeHtml(b.name)} free`).join(', ');
+    return `<div class="ticket">
+      <div class="ticket-head"><span class="t-retailer">${escapeHtml(r?r.name:'Retailer')}</span><span class="t-time">${time}</span></div>
+      <div class="ticket-items">${itemsHtml}</div>
+      ${bonusHtml? `<div class="ticket-bonus">${bonusHtml}</div>`:''}
+      <div class="ticket-foot"><span></span><span class="tf-total">${fmt(o.total)}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ================= COLLECTIONS =================
+function openCollectionModal(rid){
+  activeRetailerId = rid;
+  const r = retailers.find(x=>x.id===rid);
+  document.getElementById('collectionRetailerLabel').textContent = r.name + ' · Outstanding: ' + fmt(outstandingFor(rid));
+  document.getElementById('colAmount').value=''; document.getElementById('colNote').value=''; document.getElementById('colMethod').value='Cash';
+  document.getElementById('collectionModalOverlay').classList.add('show');
+}
+function closeCollectionModal(){ document.getElementById('collectionModalOverlay').classList.remove('show'); }
+async function saveCollection(){
+  const amount = parseFloat(document.getElementById('colAmount').value);
+  const method = document.getElementById('colMethod').value;
+  const note = document.getElementById('colNote').value.trim();
+  if(isNaN(amount) || amount<=0){ showToast('Enter a valid amount'); return; }
+  try{
+    await db.collection('collections').add({
+      retailerId: activeRetailerId, salesmanUid: currentUser.uid,
+      amount, method, note: note||null, createdAtLocal: Date.now()
+    });
+    closeCollectionModal();
+    showToast('Collection recorded ✓');
+  }catch(e){ console.error(e); showToast('Could not save collection'); }
+}
+function renderCollections(){
+  const wrap = document.getElementById('collectionsWrap');
+  const totalDue = retailers.reduce((s,r)=>s+Math.max(0,outstandingFor(r.id)),0);
+  const totalCollected = collections.reduce((s,c)=>s+c.amount,0);
+  let html = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="sc-label">Total outstanding</div><div class="sc-value" style="color:var(--danger)">${fmt(totalDue)}</div></div>
+      <div class="stat-card"><div class="sc-label">Total collected</div><div class="sc-value" style="color:var(--success)">${fmt(totalCollected)}</div></div>
+    </div>
+    <div class="section-label">By retailer</div>`;
+  if(retailers.length===0){
+    html += `<div class="cart-empty">Add retailers first to track collections.</div>`;
+  } else {
+    html += retailers.map(r=>{
+      const due = outstandingFor(r.id);
+      return `<div class="rl-row" onclick="openRetailerSheet('${r.id}')">
+        <div class="rl-top">
+          <div><div class="rl-name">${escapeHtml(r.name)}</div></div>
+          <div><div class="rl-due ${due>0?'pos':'zero'}">${fmt(due)}</div><div class="rl-duelabel">Outstanding</div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  html += `<div class="section-label">Recent collections</div>`;
+  if(collections.length===0){
+    html += `<div class="cart-empty">No collections recorded yet.</div>`;
+  } else {
+    html += collections.slice(0,20).map(c=>{
+      const r = retailers.find(x=>x.id===c.retailerId);
+      return `<div class="ticket"><div class="ticket-head"><span class="t-retailer">${escapeHtml(r?r.name:'Retailer')}</span><span class="t-time">${new Date(c.createdAtLocal).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span></div>
+      <div class="ticket-foot"><span style="font-size:12px;color:var(--muted);">${escapeHtml(c.method)}${c.note?' · '+escapeHtml(c.note):''}</span><span class="tf-total" style="color:var(--success)">${fmt(c.amount)}</span></div></div>`;
+    }).join('');
+  }
+  wrap.innerHTML = html;
+}
+
+// ================= SCHEMES =================
+function populateSchemeProductSelect(){
+  const sel = document.getElementById('smProduct');
+  sel.innerHTML = products.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+}
+function openSchemeModal(){
+  populateSchemeProductSelect();
+  document.getElementById('smBuyQty').value=''; document.getElementById('smFreeName').value=''; document.getElementById('smGetQty').value='';
+  document.getElementById('schemeModalOverlay').classList.add('show');
+}
+function closeSchemeModal(){ document.getElementById('schemeModalOverlay').classList.remove('show'); }
+async function saveScheme(){
+  const productId = document.getElementById('smProduct').value;
+  const buyQty = parseInt(document.getElementById('smBuyQty').value);
+  const freeName = document.getElementById('smFreeName').value.trim();
+  const getQty = parseInt(document.getElementById('smGetQty').value);
+  if(!productId || !buyQty || !freeName || !getQty){ showToast('Fill in all fields'); return; }
+  const product = products.find(p=>p.id===productId);
+  try{
+    await db.collection('schemes').add({productId, productName:product.name, buyQty, freeName, getQty, active:true});
+    closeSchemeModal(); showToast('Scheme added');
+  }catch(e){ console.error(e); showToast('Could not save scheme'); }
+}
+function renderSchemes(){
+  const wrap = document.getElementById('schemesWrap');
+  if(schemes.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="es-icon">🎁</div><div class="es-title">No schemes yet</div><div class="es-sub">Add a "buy X get Y free" scheme with the + button.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = schemes.map(s=>`
+    <div class="scheme-card ${s.active===false?'sc-inactive':''}">
+      <div class="sc-text">Buy <b>${s.buyQty} ${escapeHtml(s.productName)}</b>, get <b>${s.getQty} ${escapeHtml(s.freeName)}</b> free</div>
+      ${isAdmin ? `<button class="icon-btn" onclick="toggleScheme('${s.id}', ${s.active===false})">${s.active===false?'▶':'⏸'}</button>` : ''}
+    </div>`).join('');
+}
+async function toggleScheme(id, makeActive){
+  try{ await db.collection('schemes').doc(id).update({active: makeActive}); }
+  catch(e){ console.error(e); showToast('Could not update scheme'); }
+}
+
+// ---------- boot ----------
+window.addEventListener('DOMContentLoaded', ()=>{
+  initFirebase();
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+});
+</script>
+</body>
+</html>
